@@ -4,7 +4,7 @@ find /result -type f | xargs rm -fv
 cd /ipxe/src
 cp -av /config/* config/local/
 make -j4 "$@"
-for f in bin/{ipxe.lkrn,ipxe.iso,undionly.kpxe,ipxe.pxe} "$@" ; do
+for f in bin/{ipxe.lkrn,ipxe.iso,undionly.kpxe,ipxe.pxe,ipxe.efi} "$@" ; do
     if test -r "$f" ; then
         cp "$f" /result
     fi
