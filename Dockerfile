@@ -10,17 +10,26 @@
 # bin/<some-rom>.<format>
 #
 
-FROM ubuntu:latest
-ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get -qq -y update \
-    && apt-get -qq -y install git make build-essential wget genisoimage mkisofs syslinux liblzma-dev \
-    && apt-get -qq -y autoremove \
-    && apt-get -qq -y clean all \
-    && rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/*
-WORKDIR /
-RUN git clone git://git.ipxe.org/ipxe.git /ipxe
-RUN mkdir -p /result /config
-VOLUME ["/result", "/config"]
-ADD build.sh /
-RUN chmod +x /build.sh
+FROM alpine:3.4
+
+RUN set -xe \
+  && apk --update --no-cache add --virtual \
+    build-dependencies \
+    binutils \
+    gcc \
+    git \
+    make \
+    musl \
+    musl-dev \
+    musl-utils \
+    perl \
+    syslinux \
+    xz-dev
+
+COPY config /config
+COPY build.sh /
+RUN mkdir -p /result \
+  && chmod +x /build.sh
+
+VOLUME ["/result"]
 ENTRYPOINT ["/build.sh"]

@@ -1,0 +1,98 @@
+#!ipxe
+set HTTPS_ERR HTTPS appears to have failed... attempting HTTP
+set HTTP_ERR HTTP has failed, localbooting...
+
+:start
+echo Booting...
+prompt --key m --timeout 4000 Hit the m key to open menu without dhcp... && menu  || goto dhcp
+
+:dhcp
+echo
+dhcp
+goto menu
+
+:menu
+menu Boot Menu
+item localboot Boot to local drive
+item netinfo ${space} Network card info
+item netboot Boot to netboot
+item rancheros Boot Rancher
+item alpine Boot Alpine
+item alpineload Boot Alpine From net
+item retry Retry boot
+item debug iPXE Debug Shell
+item reboot Reboot System
+choose failsafe_choice || exit
+goto ${failsafe_choice}
+
+:netinfo
+menu Network info
+item --gap MAC:
+item mac ${space} ${netX/mac}
+item --gap IP/mask:
+item ip ${space} ${netX/ip}/${netX/netmask}
+item --gap Gateway:
+item gw ${space} ${netX/gateway}
+item --gap Domain:
+item domain ${space} ${netX/domain}
+item --gap DNS:
+item dns ${space} ${netX/dns}
+item --gap DHCP server:
+item dhcpserver ${space} ${netX/dhcp-server}
+item --gap Next-server:
+item nextserver ${space} ${next-server}
+item --gap Filename:
+item filename ${space} ${netX/filename}
+choose empty ||
+goto menu
+
+:netboot
+set conn_type https
+chain --autofree https://boot.netboot.xyz/menu.ipxe || echo ${HTTPS_ERR}
+sleep 5
+set conn_type http
+chain --autofree http://boot.netboot.xyz/menu.ipxe || echo ${HTTP_ERR}
+goto menu
+
+:alpineload
+chain https://boot.alpinelinux.org/boot.ipxe || echo ${HTTP_ERR}
+sleep 5
+goto menu
+
+:alpine
+set bootarch x86_64
+set alpinelinux_base_dir alpine
+set alpine_version latest-stable
+set base-url http://dl-cdn.alpinelinux.org
+set dir ${alpinelinux_base_dir}/${alpine_version}/releases/${bootarch}/netboot
+set repo-url ${base-url}/${alpinelinux_base_dir}/${alpine_version}/main
+imgfree
+#kernel ${base-url}/${dir}/vmlinuz-vanilla ip=dhcp alpine_dev=nfs:${net0/next-server}:/mnt/storage0/dante alpine_repo=${repo-url} modules=loop,squashfs,zfs modloop=${base-url}/${dir}/modloop-vanilla
+#initrd ${base-url}/${dir}/initramfs-vanilla
+kernel nfs://${net0/next-server}/mnt/storage0/pxe/images/alpine-zfs/vmlinuz-vanilla ip=dhcp alpine_dev=nfs:${net0/next-server}:/mnt/storage0/dante alpine_repo=${repo-url} modules=loop,squashfs,zfs modloop=nfs://${net0/next-server}/mnt/storage0/pxe/images/alpine-zfs/modloop-vanilla
+initrd nfs://${net0/next-server}/mnt/storage0/pxe/images/alpine-zfs/initramfs-vanilla
+boot ||
+goto menu
+
+:rancheros
+set base-url http://releases.rancher.com/os/latest
+imgfree
+kernel ${base-url}/vmlinuz initrd=initrd rancher.password=rancher rancher.cloud_init.datasources=['url:https://gist.github.com/nalabelle/987ca3206db59d461d7815d61c5b89dd/raw/394e59ba38cc6270362ee766301227cb0330fb79/cloud-config']
+initrd ${base-url}/initrd
+boot ||
+goto menu
+
+:localboot
+exit
+
+:retry
+goto start
+
+:reboot
+reboot
+goto start
+
+:debug
+echo Type "exit" to return to menu
+shell
+goto menu
